@@ -1,1 +1,178 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace StoreApp
+{
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Price { get; set; }
+        public string Description { get; set; }
+        public int Quantity { get; set; }
+        public string Category { get; set; }
+        public decimal Discount { get; set; } = 0; // % giảm giá
+
+        public decimal GetDiscountedPrice()
+        {
+            return Price - (Price * Discount / 100);
+        }
+
+        public override string ToString()
+        {
+            return $"[{Id}] {Name} - {Category} - Giá: {Price} VND - SL: {Quantity} - Giảm: {Discount}%";
+        }
+    }
+
+    public class OrderItem
+    {
+        public Product Product { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    public class Order
+    {
+        public List<OrderItem> Items { get; set; } = new List<OrderItem>();
+
+        public decimal GetTotal()
+        {
+            return Items.Sum(i => i.Product.GetDiscountedPrice() * i.Quantity);
+        }
+    }
+
+    public class Store
+    {
+        private List<Product> products = new List<Product>();
+
+        public void AddProduct(Product p) => products.Add(p);
+
+        public void UpdateProduct(int id, decimal newPrice, string newDesc)
+        {
+            var p = products.FirstOrDefault(x => x.Id == id);
+            if (p != null)
+            {
+                p.Price = newPrice;
+                p.Description = newDesc;
+                Console.WriteLine("✔ Đã cập nhật sản phẩm!");
+            }
+            else Console.WriteLine("❌ Không tìm thấy sản phẩm!");
+        }
+
+        public void ShowProducts(string category = null, bool sortByPrice = false)
+        {
+            var list = products.AsEnumerable();
+            if (category != null)
+                list = list.Where(p => p.Category == category);
+            if (sortByPrice)
+                list = list.OrderBy(p => p.Price);
+
+            foreach (var p in list) Console.WriteLine(p);
+        }
+
+        public void ShowInventoryValueByCategory()
+        {
+            var result = products
+                .GroupBy(p => p.Category)
+                .Select(g => new
+                {
+                    Category = g.Key,
+                    TotalValue = g.Sum(p => p.Price * p.Quantity)
+                });
+
+            foreach (var r in result)
+                Console.WriteLine($"Danh mục: {r.Category}, Tổng giá trị tồn: {r.TotalValue} VND");
+        }
+
+        public void SetDiscount(int id, decimal discount)
+        {
+            var p = products.FirstOrDefault(x => x.Id == id);
+            if (p != null)
+            {
+                p.Discount = discount;
+                Console.WriteLine($"✔ Đã giảm {discount}% cho {p.Name}");
+            }
+            else Console.WriteLine("❌ Không tìm thấy sản phẩm!");
+        }
+
+        public Product FindProduct(int id) => products.FirstOrDefault(x => x.Id == id);
+    }
+
+    class Program
+    {
+        static void Main()
+        {
+            Store store = new Store();
+
+            // Thêm dữ liệu mẫu
+            store.AddProduct(new Product { Id = 1, Name = "iPhone 15", Price = 20000000, Quantity = 5, Category = "Điện thoại", Description = "Hàng Apple chính hãng" });
+            store.AddProduct(new Product { Id = 2, Name = "Laptop Dell", Price = 15000000, Quantity = 3, Category = "Laptop", Description = "Máy tính Dell bền bỉ" });
+
+            while (true)
+            {
+                Console.WriteLine("\n===== MENU CỬA HÀNG =====");
+                Console.WriteLine("1. Hiển thị danh sách sản phẩm");
+                Console.WriteLine("2. Cập nhật sản phẩm");
+                Console.WriteLine("3. Tính tổng giá trị tồn kho theo danh mục");
+                Console.WriteLine("4. Giảm giá cho sản phẩm");
+                Console.WriteLine("5. Đặt hàng");
+                Console.WriteLine("0. Thoát");
+                Console.Write("Chọn: ");
+
+                int choice = int.Parse(Console.ReadLine());
+                if (choice == 0) break;
+
+                switch (choice)
+                {
+                    case 1:
+                        Console.WriteLine("Danh sách sản phẩm:");
+                        store.ShowProducts();
+                        break;
+
+                    case 2:
+                        Console.Write("Nhập ID sản phẩm: ");
+                        int idUpdate = int.Parse(Console.ReadLine());
+                        Console.Write("Giá mới: ");
+                        decimal newPrice = decimal.Parse(Console.ReadLine());
+                        Console.Write("Mô tả mới: ");
+                        string newDesc = Console.ReadLine();
+                        store.UpdateProduct(idUpdate, newPrice, newDesc);
+                        break;
+
+                    case 3:
+                        store.ShowInventoryValueByCategory();
+                        break;
+
+                    case 4:
+                        Console.Write("Nhập ID sản phẩm: ");
+                        int idDiscount = int.Parse(Console.ReadLine());
+                        Console.Write("Nhập % giảm giá: ");
+                        decimal discount = decimal.Parse(Console.ReadLine());
+                        store.SetDiscount(idDiscount, discount);
+                        break;
+
+                    case 5:
+                        Order order = new Order();
+                        while (true)
+                        {
+                            Console.Write("Nhập ID sản phẩm (0 để thoát): ");
+                            int idOrder = int.Parse(Console.ReadLine());
+                            if (idOrder == 0) break;
+                            Product p = store.FindProduct(idOrder);
+                            if (p == null)
+                            {
+                                Console.WriteLine("❌ Không tìm thấy sản phẩm!");
+                                continue;
+                            }
+                            Console.Write("Nhập số lượng: ");
+                            int qty = int.Parse(Console.ReadLine());
+                            order.Items.Add(new OrderItem { Product = p, Quantity = qty });
+                        }
+                        Console.WriteLine($"Tổng số tiền đơn hàng: {order.GetTotal()} VND");
+                        break;
+                }
+            }
+        }
+    }
+}
 
